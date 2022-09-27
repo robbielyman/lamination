@@ -1,7 +1,7 @@
 -- lamination
 -- a substitution sequencer
 --
--- v0.1 @alanza
+-- v0.2 @alanza
 -- llllllll.co/t/lamination/58652
 --    ▼ instructions below ▼
 --
@@ -16,6 +16,13 @@ UI = require "ui"
 MusicUtil = require "musicutil"
 Lattice = require "lattice"
 HalfSecond = include "../awake/lib/halfsecond"
+
+options = {}
+options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii jf", "crow ii er301"}
+
+local midi_devices
+local midi_device
+local midi_channel
 
 engine.name = "PolyPerc"
 
@@ -59,7 +66,49 @@ function init()
     for i = 1, #MusicUtil.SCALES do
         table.insert(Scale_Names, string.lower(MusicUtil.SCALES[i].name))
     end
+    build_midi_device_list()
+    notes_off_metro = metro.init()
+    notes_off_metro.event = all_notes_off
     params:add_separator('lamination', "LAMINATION")
+    params:add_group("outs", "outs", 3)
+    params:add{
+        type    = "option",
+        id      = "out",
+        name    = "out",
+        options = options.OUT,
+        action  = function(value)
+            all_notes_off()
+            if value == 4 then crow.output[2].action = "{to(5,0),to(0,0.25)}"
+            elseif value == 5 then
+                crow.ii.pullup(true)
+                crow.ii.jf.mode(1)
+            elseif value == 6 then
+                crow.ii.pullup(true)
+            end
+        end
+    }
+    params:add{
+        type    = "option",
+        id      = "midi_device",
+        name    = "midi out device",
+        options = midi_devices,
+        default = 1,
+        action  = function(value)
+            midi_device = midi.connect(value)
+        end
+    }
+    params:add{
+        type    = "number",
+        id      = "midi_out_channel",
+        name    = "midi out channel",
+        min     = 1,
+        max     = 16,
+        default = 1,
+        action  = function(value)
+            all_notes_off()
+            midi_channel = value
+        end
+    }
     params:add{
         type    = "option",
         id      = "scale",
@@ -84,6 +133,60 @@ function init()
             Scale = MusicUtil.generate_scale_of_length(params:get("root_note"), params:get("scale"), 16)
         end
     }
+    params:add{
+        type    = "number",
+        id      = "probability",
+        name    = "probability",
+        min     = 0,
+        max     = 100,
+        default = 100
+    }
+    params:add{
+        type    = "trigger",
+        id      = "stop",
+        name    = "stop",
+        action  = function()
+            stop()
+            reset()
+        end
+    }
+    params:add{
+        type    = "trigger",
+        id      = "start",
+        name    = "start",
+        action  = start
+    }
+    params:add{
+        type    = "trigger",
+        id      = "reset",
+        name    = "reset",
+        action  = reset
+    }
+    cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
+    params:add{type="control",id="amp",controlspec=cs_AMP,
+        action=function(x) engine.amp(x) end}
+
+    cs_PW = controlspec.new(0,100,'lin',0,50,'%')
+    params:add{type="control",id="pw",controlspec=cs_PW,
+        action=function(x) engine.pw(x/100) end}
+
+    cs_REL = controlspec.new(0.1,3.2,'lin',0,1.2,'s')
+    params:add{type="control",id="release",controlspec=cs_REL,
+        action=function(x) engine.release(x) end}
+
+    cs_CUT = controlspec.new(50,5000,'exp',0,800,'hz')
+    params:add{type="control",id="cutoff",controlspec=cs_CUT,
+        action=function(x) engine.cutoff(x) end}
+
+    cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
+    params:add{type="control",id="gain",controlspec=cs_GAIN,
+        action=function(x) engine.gain(x) end}
+
+    cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
+    params:add{type="control",id="pan",controlspec=cs_PAN,
+        action=function(x) engine.pan(x) end}
+    HalfSecond.init()
+
     params:add_separator('rules_data', 'rules data')
     for j = 1, #Pages do
         params:add_group(Pages[j].prefix, Pages[j].prefix, 1 + Pages[j].max * 8)
@@ -166,12 +269,27 @@ function init()
             if Pages[3].lamination[Pages[3].position] ~= 0 then
                 local div = 12 / Pages[3].lamination[Pages[3].position]
                 if (counter - 1) % div + 1 == 1 then
+                    all_notes_off()
                     local octave = Pages[2].lamination[Pages[2].position]
                     if octave ~= 0 then
                         octave = octave - (Pages[2].size // 2 + 1)
                         local pitch = Pages[1].lamination[Pages[1].position]
-                        if pitch ~= 0 then
-                            engine.hz(MusicUtil.note_num_to_freq(Scale[pitch] + 12*octave))
+                        if pitch ~= 0 and Running then
+                            if params:get("out") == 1 or params:get("out") == 3 then
+                                engine.hz(MusicUtil.note_num_to_freq(Scale[pitch] + 12*octave))
+                            elseif params:get("out") == 2 or params:get("out") == 3 then
+                                midi_device:note_on(pitch + 12*octave, 96, midi_channel)
+                                table.insert(active_notes, pitch + 12*octave)
+                                notes_off_metro:start(60 / (params:get("clock_tempo") * 16))
+                            elseif params:get("out") == 4 then
+                                crow.output[1].volts = (pitch + 12*octave - 60)/12
+                                crow.output[2].execute()
+                            elseif params:get("out") == 5 then
+                                crow.ii.jf.play_note((pitch + 12*octave - 60)/12, 5)
+                            elseif params:get("out") == 6 then
+                                crow.ii.er301.cv(1, (pitch + 12*octave - 60)/12)
+                                crow.ii.er301.tr_pulse(1)
+                            end
                         end
                     end
                 end
@@ -207,7 +325,8 @@ function init()
     end
     Screen_Dirty = true
     params:default()
-    HalfSecond.init()
+    midi_device.event = midi_event
+    Running = true
     lattice:start()
 end
 
@@ -448,4 +567,53 @@ function grid_redraw()
         end
     end
     Grid:refresh()
+end
+
+function stop()
+    Running = false
+    all_notes_off()
+end
+
+function start()
+    Running = true
+end
+
+function reset()
+    for i = 1,3 do
+        iterate(i, true)
+    end
+end
+
+function midi_event(data)
+    msg = midi.to_msg(data)
+    if msg.type == "start" then
+        reset()
+        start()
+    elseif msg.type == "continue" then
+        if Running then
+            stop()
+        else
+            start()
+        end
+    elseif msg.type == "stop" then
+        stop()
+    end
+end
+
+function build_midi_device_list()
+    midi_devices = {}
+    for i = 1, #midi.vports do
+        local long_name = midi.vports[i].name
+        local short_name = string.len(long_name) > 15 and util.acronym(long_name) or long_name
+        table.insert(midi_devices,i .. ": " .. short_name)
+    end
+end
+
+function all_notes_off()
+    if params:get("out") == 2 or params:get("out") == 3 then
+        for _, a in pairs(active_notes) do
+            midi_device:note_off(a, nil, midi_channel)
+        end
+    end
+    active_notes = {}
 end
