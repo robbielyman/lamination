@@ -2,6 +2,7 @@
 -- a substitution sequencer
 --
 -- v0.1 @alanza
+-- llllllll.co/t/lamination/58652
 --    ▼ instructions below ▼
 --
 -- E1 scrolls page
