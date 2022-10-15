@@ -34,7 +34,7 @@ Engine_FormantPerc : CroneEngine {
           }).add;
 
           this.addCommand("hz", "f", {
-            arg ms;
+            arg msg;
             var val = msg[1];
             Synth("FormantPerc", [\out, context.out_b, \freq, val, \formant, formant, \mode, mode, \slope, slope, \formant_amp, formant_amp, \square_amp, square_amp, \gain, gain, \am, am, \cutoff, cutoff, \pan, pan, \release, release], target:pg);
           });
