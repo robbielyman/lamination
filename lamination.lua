@@ -16,6 +16,7 @@ UI = require "ui"
 MusicUtil = require "musicutil"
 Lattice = require "lattice"
 HalfSecond = include "../awake/lib/halfsecond"
+FormantPerc = include "lib/formantperc_engine"
 
 options = {}
 options.OUT = {"audio", "midi", "audio + midi", "crow out 1+2", "crow ii jf", "crow ii er301"}
@@ -24,7 +25,7 @@ local midi_devices
 local midi_device
 local midi_channel
 
-engine.name = "PolyPerc"
+engine.name = "FormantPerc"
 
 Alphabet = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'}
 Pages = {
@@ -63,6 +64,13 @@ Scale_Names = {}
 Scale = {}
 
 function init()
+    -- install FormantTriPTR if not already installed
+    if not util.file_exists("/home/we/.local/share/SuperCollider/Extensions/FormantTriPTR/FormantTriPTR_scsynth.so") then
+        util.os_capture("mkdir /home/we/.local/share/SuperCollider/Extensions/FormantTriPTR")
+        util.os_capture("cp /home/we/dust/code/lamination/bin/FormantTriPTR/FormantTriPTR_scsynth.so /home/we/.local/share/SuperCollider/Extensions/FormantTriPTR/FormantTriPTR_scsynth.so")
+        print("installed FormantTriPTR, please restart norns")
+    end
+
     for i = 1, #MusicUtil.SCALES do
         table.insert(Scale_Names, string.lower(MusicUtil.SCALES[i].name))
     end
@@ -162,29 +170,7 @@ function init()
         name    = "reset",
         action  = reset
     }
-    cs_AMP = controlspec.new(0,1,'lin',0,0.5,'')
-    params:add{type="control",id="amp",controlspec=cs_AMP,
-        action=function(x) engine.amp(x) end}
-
-    cs_PW = controlspec.new(0,100,'lin',0,50,'%')
-    params:add{type="control",id="pw",controlspec=cs_PW,
-        action=function(x) engine.pw(x/100) end}
-
-    cs_REL = controlspec.new(0.1,3.2,'lin',0,1.2,'s')
-    params:add{type="control",id="release",controlspec=cs_REL,
-        action=function(x) engine.release(x) end}
-
-    cs_CUT = controlspec.new(50,5000,'exp',0,800,'hz')
-    params:add{type="control",id="cutoff",controlspec=cs_CUT,
-        action=function(x) engine.cutoff(x) end}
-
-    cs_GAIN = controlspec.new(0,4,'lin',0,1,'')
-    params:add{type="control",id="gain",controlspec=cs_GAIN,
-        action=function(x) engine.gain(x) end}
-
-    cs_PAN = controlspec.new(-1,1, 'lin',0,0,'')
-    params:add{type="control",id="pan",controlspec=cs_PAN,
-        action=function(x) engine.pan(x) end}
+    FormantPerc.params()
     HalfSecond.init()
 
     params:add_separator('rules_data', 'rules data')
