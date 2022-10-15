@@ -27,7 +27,7 @@ Engine_FormantPerc : CroneEngine {
             var snd = 0.0;
             var filt = 0.0;
             var env = Env.perc(releaseTime: release).kr(2);
-            form = SineShaper.ar((MulAdd.new(square, 0.5 * am, gain)) * LeakDC.ar(form));
+            form = SineShaper.ar(Clip.ar(MulAdd.new(square, 0.5 * am, gain), 0.0, 3.0) * LeakDC.ar(form));
             snd = (form * formant_amp) + (square * square_amp);
             filt = MoogFF.ar(snd, cutoff);
             Out.ar(out, Pan2.ar((filt*env),pan));
