@@ -74,7 +74,7 @@ Engine_FormantPerc : CroneEngine {
             mode = msg[1];
           });
 
-          this.addCommand("release", "f" {
+          this.addCommand("release", "f", {
             arg msg;
             release = msg[1];
           });
