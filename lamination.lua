@@ -1,7 +1,7 @@
 -- lamination
 -- a substitution sequencer
 --
--- v0.2 @alanza
+-- v0.3 @alanza
 -- llllllll.co/t/lamination/58652
 --    ▼ instructions below ▼
 --
