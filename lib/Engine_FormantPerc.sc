@@ -22,7 +22,7 @@ Engine_FormantPerc : CroneEngine {
 
           SynthDef("FormantPerc", {
             arg out, freq = 440, formant = formant, mode = mode, slope = slope, formant_amp = formant_amp, square_amp = square_amp, gain = gain, am = am, cutoff = cutoff, pan = pan, release =release;
-            var form = FormantTriPTR.ar(freq, formant + (0.25 * mode * freq), slope);
+            var form = FormantTriPTR.ar(freq, formant + (0.5 * mode * freq), slope);
             var square = Pulse.ar(freq);
             var snd = 0.0;
             var filt = 0.0;
