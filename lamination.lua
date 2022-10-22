@@ -65,11 +65,18 @@ Scale = {}
 
 function init()
     -- install FormantTriPTR if not already installed
-    if not util.file_exists("/home/we/.local/share/SuperCollider/Extensions/FormantTriPTR/FormantTriPTR_scsynth.so") then
-        util.os_capture("mkdir /home/we/.local/share/SuperCollider/Extensions/FormantTriPTR")
-        util.os_capture("cp /home/we/dust/code/lamination/bin/FormantTriPTR/FormantTriPTR_scsynth.so /home/we/.local/share/SuperCollider/Extensions/FormantTriPTR/FormantTriPTR_scsynth.so")
-        print("installed FormantTriPTR, please restart norns")
+    Needs_Restart = false
+    local extensions = "/home/we/.local/share/SuperCollider/Extensions"
+    local formanttri_files = {"FormantTriPTR_scsynth.so", "FormantTriPTR.sc"}
+    for _,file in pairs(formanttri_files) do
+        if not util.file_exists(extensions .. "/FormantTriPTR/" .. file) then
+            util.os_capture("mkdir " .. extensions .. "/FormantTriPTR")
+            util.os_capture("cp " .. norns.state.path .. "/ignore/" .. file .. " " .. extensions .. "/FormantTriPTR/" .. file)
+            print("installed " .. file)
+            Needs_Restart = true
+        end
     end
+    Restart_Message = UI.Message.new{"please restart norns"}
 
     for i = 1, #MusicUtil.SCALES do
         table.insert(Scale_Names, string.lower(MusicUtil.SCALES[i].name))
@@ -331,25 +338,29 @@ end
 
 function redraw()
     screen.clear()
-    Screens:redraw()
-    if Editing == 0 then
-        screen.move(4, 8)
-        screen.level(15)
-        screen.text(Pages[Screens.index].prefix)
-        screen.move(40, 8)
-        screen.level(9)
-        local s = ""
-        for j = Pages[Screens.index].position, #Pages[Screens.index].lamination do
-            if Pages[Screens.index].lamination[j] == 0 then
-                s = s .. " "
-            else
-                s = s .. Alphabet[Pages[Screens.index].lamination[j]]
+    if Needs_Restart then
+        Restart_Message:redraw()
+    else
+        Screens:redraw()
+        if Editing == 0 then
+            screen.move(4, 8)
+            screen.level(15)
+            screen.text(Pages[Screens.index].prefix)
+            screen.move(40, 8)
+            screen.level(9)
+            local s = ""
+            for j = Pages[Screens.index].position, #Pages[Screens.index].lamination do
+                if Pages[Screens.index].lamination[j] == 0 then
+                    s = s .. " "
+                else
+                    s = s .. Alphabet[Pages[Screens.index].lamination[j]]
+                end
             end
+            screen.text(s)
+            screen.fill()
         end
-        screen.text(s)
-        screen.fill()
+        Pages[Screens.index].rule:redraw()
     end
-    Pages[Screens.index].rule:redraw()
     screen.update()
 end
 
@@ -540,7 +551,7 @@ function grid_redraw()
         for y = 1, Pages[Screens.index].max do
             for x = 1, 8 do
                 if Pages[Screens.index].data[y][x] ~= 0 then
-                    Grid:led(8 * (y // 8) + x, (y - 1) % 8 + 1, y == current and 15 or 9)
+                    Grid:led(8 * ((y - 1) // 8) + x, (y - 1) % 8 + 1, y == current and 15 or 9)
                 end
             end
         end
