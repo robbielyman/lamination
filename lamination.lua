@@ -25,7 +25,8 @@ local midi_devices
 local midi_device
 local midi_channel
 
-engine.name = "FormantPerc"
+local extensions = "/home/we/.local/share/SuperCollider/Extensions"
+engine.name = util.file_exists(extensions .. "/FormantTriPTR/FormantTriPTR.sc") and "FormantPerc" or nil
 
 Alphabet = {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p'}
 Pages = {
@@ -66,7 +67,6 @@ Scale = {}
 function init()
     -- install FormantTriPTR if not already installed
     Needs_Restart = false
-    local extensions = "/home/we/.local/share/SuperCollider/Extensions"
     local formanttri_files = {"FormantTriPTR_scsynth.so", "FormantTriPTR.sc"}
     for _,file in pairs(formanttri_files) do
         if not util.file_exists(extensions .. "/FormantTriPTR/" .. file) then
@@ -77,7 +77,7 @@ function init()
         end
     end
     Restart_Message = UI.Message.new{"please restart norns"}
-
+    if Needs_Restart then redraw() return end
     for i = 1, #MusicUtil.SCALES do
         table.insert(Scale_Names, string.lower(MusicUtil.SCALES[i].name))
     end
