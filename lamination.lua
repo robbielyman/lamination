@@ -27,7 +27,6 @@ local midi_channel
 
 local extensions = "/home/we/.local/share/SuperCollider/Extensions"
 engine.name = "FormantPerc"
-engine.ugens = "FormantTriPTR"
 
 Alphabet = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p' }
 Pages = {
@@ -252,7 +251,7 @@ function init()
   end
   local counter = 1
   local lattice = Lattice:new()
-  lattice:new_pattern {
+  lattice:new_sprocket {
     division = 1 / (8 * 12),
     action = function()
       counter = counter % (12) + 1
